@@ -3,18 +3,33 @@ import customtkinter
 from class_bouton import Bouton
 from class_fenetre import Fenetre
 from Pile import Pile
-import csv
 from PIL import Image
 from random import*
 from class_file import File
+import sqlite3
+from tkinter import messagebox
+
+db = sqlite3.connect("./donnees/compte.db")
+cursor=db.cursor()
 
 connexion_statut=False
 btn_state = False
 
-username=None
-
+try:
+    username=cursor.execute("SELECT Pseudo FROM compte WHERE statut_connexion=?",("Oui",)).fetchone()[0]
+except:
+    pass
 fenetre_page_principal = Fenetre(1000, 700, 400,150,'#145810','Solitaire',None,None)
 fenetre_page_principal.draw_fenetre()
+fenetre_page_regle = Fenetre(1000, 700, 400,150,'#145810','Solitaire',None,fenetre_page_principal.fenetre)
+fenetre_page_regle.draw_fenetre()
+fenetre_page_regle.fenetre_enlever()
+fenetre_jeu = Fenetre(1000, 700, 400,150,'#145810','Solitaire',"./images/fond_plateau.png",fenetre_page_principal.fenetre)
+fenetre_jeu.draw_fenetre()
+fenetre_jeu.fenetre_enlever()
+fenetre_page_compte = Fenetre(1000, 700, 400,150,'#145810','Solitaire',None,fenetre_page_principal.fenetre)
+fenetre_page_compte.draw_fenetre()
+fenetre_page_compte.fenetre_enlever()
 
 
 #Image 4 carte
@@ -46,9 +61,19 @@ texte_page_principal.place(x=400,y=250)
 bouton_quitter=Bouton(fenetre_page_principal,50,50,10,2,'black','#e73535','#d12e2e','Quitter','black',('Sitka Text Semibold',30),860,10,quit)
 bouton_quitter.draw_bouton()
 
+def retour():
+    global btn_state
+    fenetre_page_compte.fenetre_enlever()
+    fenetre_page_regle.fenetre_enlever()
+    fenetre_jeu.fenetre_enlever()
+    fenetre_page_principal.fenetre_apparaitre()
+    btn_state=False
+    NavBar.destroy()
+    frame.destroy()
+    bandeau(fenetre_page_principal.fenetre,"fenetre_page_principal")
 
 """Creation de la fenetre de connection"""
-def creation_compte(): #fonction pour se connecter
+def creation_compte():
     fenetre_compte=Fenetre(200,200,500,250,'#10480d','Connectez-vous à votre compte',None,fenetre_page_principal.fenetre)
     fenetre_compte.draw_fenetre()
     fenetre_compte.fenetre.overrideredirect(True)
@@ -56,60 +81,44 @@ def creation_compte(): #fonction pour se connecter
     quitter.draw_bouton()
 
 
-    #fonction pour verifier l'éxistance du Pseudo
-    def username_existe_dans_colonne(username, nom_colonne):
-        with open("./donnees/info.csv", mode="r", newline='') as fichier_csv:
-            lecteur_csv = csv.DictReader(fichier_csv)
-            for ligne in lecteur_csv:
-                if ligne[nom_colonne] == username:
-                    return True
-        fichier_csv.close()
+    def username_existe_dans_colonne(username):
+        pseudo= [nom[0] for nom in cursor.execute("SELECT Pseudo FROM compte").fetchall()]
+        for i in range(len(pseudo)):
+            if pseudo[i]==username:
+                return True
         return False
-    #fonction pour vérifier l'éxistance entre du mdp
-    def password_existe_dans_colonne(password, nom_colonne):
-        with open("./donnees/info.csv", mode="r", newline='') as fichier_csv:
-            lecteur_csv = csv.DictReader(fichier_csv)
-            for ligne in lecteur_csv:
-                if ligne[nom_colonne] == password:
-                    return True
-        fichier_csv.close()
-        return False
+    def password_existe_dans_colonne(password, pseudo):
+        motsDePasse= cursor.execute("SELECT mdp FROM compte WHERE Pseudo=?",(pseudo,)).fetchone()[0]
+        if motsDePasse==password:
+            return True
+        else:
+            return False
+        
     #fonction de connection
     def login():
         global username,connexion_statut,btn_state
         username = entry_username.get()
         password = entry_password.get()
 
-        if username_existe_dans_colonne(username, "Pseudo") == True and password_existe_dans_colonne(password, "Mdp") == True:
-            fenetre_compte.fenetre_enlever()
-            """mettre à jour le bandeau"""
-            connexion_statut=True
-            NavBar.destroy()
-            frame.destroy()
-            btn_state=False
-            bandeau()
-            with open('./donnees/info.csv', mode="r", newline='') as fichier_csv:
-                lecteur_csv = csv.DictReader(fichier_csv)
-                donnees = list(lecteur_csv)
-            for ligne in donnees:
-                if ligne["Pseudo"]==username:
-                    if ligne["statut_connexion"]=='Non':
-                        ligne["statut_connexion"]='Oui'
-            with open('./donnees/info.csv', mode="w", newline='') as fichier_csv:
-                noms_colonnes = ['Pseudo','Mdp','statut_connexion']
-                ecrivain = csv.DictWriter(fichier_csv, fieldnames=noms_colonnes)
-                ecrivain.writeheader()
-                ecrivain.writerows(donnees)
+        if username_existe_dans_colonne(username) == True: 
+            if password_existe_dans_colonne(password, username) == True:
+                fenetre_compte.fenetre_enlever()
+                """mettre à jour le bandeau"""
+                connexion_statut=True
+                NavBar.destroy()
+                frame.destroy()
+                btn_state=False
+                bandeau(fenetre_page_principal.fenetre,"fenetre_page_principal")
+                db.execute("UPDATE compte SET statut_connexion=? WHERE statut_connexion=?",('Non','Oui'))
+                db.execute("UPDATE compte SET statut_connexion=? WHERE Pseudo=?",('Oui',username))
 
-        else:
-            compte.withdraw()
-            if username_existe_dans_colonne(username, "Pseudo") == True and password_existe_dans_colonne(password, "Mdp") == False:
+                db.commit()
+            else:
                 messagebox.showerror("Erreur d'authentification", "Le mot de passe est incorrect")#erreur messagebox car mdp incorrect
-            elif username_existe_dans_colonne(username, "Pseudo") == False and password_existe_dans_colonne(password, "Mdp") == True:
+        else:
+            if username_existe_dans_colonne(username) == False:
                 messagebox.showerror("Erreur d'authentification", "Ce compte n'existe pas")#erreur messagebox car Pseudo incorrect
-            elif username_existe_dans_colonne(username, "Pseudo") == False and password_existe_dans_colonne(password, "Mdp") == False:
-                messagebox.showerror("Erreur d'authentification", "Ce compte n'existe pas") #erreur messagebox car mdp et Pseudo incorrect
-
+            
     #création du label d'entré du Pseudo
     label_username = Label(fenetre_compte.fenetre, text="Pseudonyme:",bg="#10480d")
     label_username.pack()
@@ -140,13 +149,11 @@ def inscription():
     quitter.draw_bouton()
 
     #Vérification de l'éxistence du Pseudo et mdp
-    def present(nom_colonne,mot):
-        with open("donnees/info.csv", mode="r", newline='') as fichier_csv:
-            lecteur_csv = csv.DictReader(fichier_csv)
-            for ligne in lecteur_csv:
-                if ligne[nom_colonne] == mot:
-                    return False
-        fichier_csv.close()
+    def present(mot):
+        pseudo = [ nom [0] for nom in cursor.execute("SELECT Pseudo FROM compte").fetchall()]
+        for i in range (len(pseudo)):
+            if mot == pseudo[i]:
+                return False
         return True
     #fonction pour enregister les nouveaux compte dans le csv
     def enregistrer_infos():
@@ -154,33 +161,20 @@ def inscription():
         nom = entry_nom.get()
         password = entry_password.get()
         #Ouverture du fichier CSV en mode écriture
-        with open("donnees/info.csv", mode="a", newline='') as fichier_csv:
-            writer = csv.writer(fichier_csv)
-            if present("Pseudo",nom) and present("Mdp",nom) ==True:
-                writer.writerow([nom, password])
-                """mettre à jour le bandeau"""
-                connexion_statut=True
-                NavBar.destroy()
-                frame.destroy()
-                btn_state=False
-                bandeau()
-                with open('./donnees/info.csv', mode="r", newline='') as fichier_csv:
-                    lecteur_csv = csv.DictReader(fichier_csv)
-                    donnees = list(lecteur_csv)
-                for ligne in donnees:
-                    if ligne["Pseudo"]==username:
-                        if ligne["statut_connexion"]==None:
-                            ligne["statut_connexion"]='Oui'
-                with open('./donnees/info.csv', mode="w", newline='') as fichier_csv:
-                    noms_colonnes = ['Pseudo','Mdp','statut_connexion']
-                    ecrivain = csv.DictWriter(fichier_csv, fieldnames=noms_colonnes)
-                    ecrivain.writeheader()
-                    ecrivain.writerows(donnees)
-                fenetre_inscription.fenetre_enlever()
-            else:
-                label_erreur=Label(fenetre_inscription.fenetre, text="Ce compte existe déjà",bg="RED")
-                label_erreur.place(x=40, y=0)
-            fichier_csv.close()
+        
+        if present(nom) ==True:
+            cursor.execute("INSERT INTO compte (Pseudo,Mdp,statut_connexion) VALUES (?,?,?)",(nom,password,"Oui"))
+            db.commit()
+            """mettre à jour le bandeau"""
+            connexion_statut=True
+            NavBar.destroy()
+            frame.destroy()
+            btn_state=False
+            bandeau(fenetre_page_principal.fenetre,"fenetre_page_principal")
+            
+            fenetre_inscription.fenetre_enlever()
+        else:
+            messagebox.showerror("Erreur de création de compte", "Ce Pseudo est déjà utilisé")
 
     # Création des étiquettes et des champs de saisie
     nom_label = Label(fenetre_inscription.fenetre, text="Nom :", bg="#10480d")
@@ -205,35 +199,138 @@ def inscription():
 def deconnection():
     global connexion_statut,btn_state
     connexion_statut=False
-    with open('./donnees/info.csv', mode="r", newline='') as fichier_csv:
-        lecteur_csv = csv.DictReader(fichier_csv)
-        donnees = list(lecteur_csv)
-    for ligne in donnees:
-        ligne['statut_connexion']='Non'
-    with open('./donnees/info.csv', mode="w", newline='') as fichier_csv:
-        noms_colonnes = ['Pseudo','Mdp','statut_connexion']
-        ecrivain = csv.DictWriter(fichier_csv, fieldnames=noms_colonnes)
-        ecrivain.writeheader()
-        ecrivain.writerows(donnees)
+    db.execute("UPDATE compte SET statut_connexion=? WHERE statut_connexion=?",('Non','Oui'))
+    db.commit()
     NavBar.destroy()
     frame.destroy()
     btn_state=False
-    bandeau()
-    pass
+    bandeau(fenetre_page_principal.fenetre,"fenetre_page_principal")
+
+def lvl_compte():
+    print(username)
+    xp=cursor.execute("SELECT xp FROM compte WHERE Pseudo=?",(username,)).fetchone()[0]
+    if xp<=250:
+        lvl=1
+        progress=xp/250
+        return progress,lvl
+    elif xp<=600:
+        lvl=2
+        progress=(xp-250)/350
+        return progress,lvl
+    elif xp<=1050:
+        lvl=3
+        progress=(xp-600)/450
+        return progress,lvl
+    elif xp<=1600:
+        lvl=4
+        progress=(xp-1050)/550
+        return progress,lvl
+    elif xp<=2250:
+        lvl=5
+        progress=(xp-1600)/650
+        return progress,lvl
+    elif xp<=3000:
+        lvl=6
+        progress=(xp-2250)/750
+        return progress,lvl
+    elif xp<=3850:
+        lvl=7
+        progress=(xp-3000)/850
+        return progress,lvl
+    elif xp<=4800:
+        lvl=8
+        progress=(xp-3850)/950
+        return progress,lvl
+    elif xp<=5850:
+        lvl=9
+        progress=(xp-4800)/1050 
+        return progress,lvl
+    elif xp<=7000:
+        lvl=10
+        progress=(xp-5850)/1150 
+        return progress,lvl
+
+def compte_pg():
+    global btn_state
+    fenetre_page_regle.fenetre_enlever()
+    fenetre_jeu.fenetre_enlever()
+    fenetre_page_principal.fenetre_enlever()
+    fenetre_page_compte.fenetre_apparaitre()
+    btn_state=False
+    progressbar = customtkinter.CTkProgressBar(fenetre_page_compte.fenetre, orientation="horizontal",height=30,fg_color='gray',progress_color='black')
+    progressbar.place(x=400,y=160)
+    progress,lvl=lvl_compte()
+    progressbar.set(progress)
+
+    try:
+        win=cursor.execute("SELECT win FROM compte WHERE Pseudo=?",(username,)).fetchone()[0]
+        loose=cursor.execute("SELECT loose FROM compte WHERE Pseudo=?",(username,)).fetchone()[0]
+        ratio=win/loose
+    except:
+        ratio=0
 
 
+    try:
+        deplacement=cursor.execute("SELECT deplacement_totaux FROM compte WHERE Pseudo=?",(username,)).fetchone()[0]
+        game=cursor.execute("SELECT nb_parties FROM compte WHERE Pseudo=?",(username,)).fetchone()[0]
+        moyen_deplacement=deplacement/gammavariate
+    except:
+        moyen_deplacement=0
+
+    label_ratio_win = customtkinter.CTkLabel(fenetre_page_compte.fenetre, text=f"Ratio de victoires : {ratio}% ", font=('Sitka Text Semibold', 18), justify="left", wraplength=660, text_color="white")
+    label_ratio_win.place(x=130,y=260)
+    label_lvl_compte = customtkinter.CTkLabel(fenetre_page_compte.fenetre, text=f"Niveaux du compte : {lvl}", font=('Sitka Text Semibold', 18), justify="left", wraplength=660, text_color="white")
+    label_lvl_compte.place(x=400,y=120)
+    label_game_play = customtkinter.CTkLabel(fenetre_page_compte.fenetre, text=f"Parties jouées : {cursor.execute("SELECT nb_parties FROM compte WHERE Pseudo=?",(username,)).fetchone()[0]}", font=('Sitka Text Semibold', 18), justify="left", wraplength=660, text_color="white")
+    label_game_play.place(x=130,y=320)
+    label_game_win = customtkinter.CTkLabel(fenetre_page_compte.fenetre, text=f"Parties gagner : {cursor.execute("SELECT win FROM compte WHERE Pseudo=?",(username,)).fetchone()[0]}", font=('Sitka Text Semibold', 18), justify="left", wraplength=660, text_color="white")
+    label_game_win.place(x=130,y=380)
+    label_game_loose = customtkinter.CTkLabel(fenetre_page_compte.fenetre, text=f"Parties perdu : {cursor.execute("SELECT loose FROM compte WHERE Pseudo=?",(username,)).fetchone()[0]}", font=('Sitka Text Semibold', 18), justify="left", wraplength=660, text_color="white")
+    label_game_loose.place(x=130,y=440)
+    label_best_score = customtkinter.CTkLabel(fenetre_page_compte.fenetre, text=f"Meilleur score : {cursor.execute("SELECT best_score FROM compte WHERE Pseudo=?",(username,)).fetchone()[0]}", font=('Sitka Text Semibold', 18), justify="left", wraplength=660, text_color="white")
+    label_best_score.place(x=130,y=500)
+    label_best_temps = customtkinter.CTkLabel(fenetre_page_compte.fenetre, text=f"Meilleur temps : {cursor.execute("SELECT best_temps FROM compte WHERE Pseudo=?",(username,)).fetchone()[0]}", font=('Sitka Text Semibold', 18), justify="left", wraplength=660, text_color="white")
+    label_best_temps.place(x=600,y=260)
+    label_best_deplacement = customtkinter.CTkLabel(fenetre_page_compte.fenetre, text=f"Minimun de deplacement : {cursor.execute("SELECT best_deplacement FROM compte WHERE Pseudo=?",(username,)).fetchone()[0]}", font=('Sitka Text Semibold', 18), justify="left", wraplength=660, text_color="white")
+    label_best_deplacement.place(x=600,y=320)
+    label_temps_total = customtkinter.CTkLabel(fenetre_page_compte.fenetre, text=f"temps de jeux : {cursor.execute("SELECT temps_jeu FROM compte WHERE Pseudo=?",(username,)).fetchone()[0]}", font=('Sitka Text Semibold', 18), justify="left", wraplength=660, text_color="white")
+    label_temps_total.place(x=600,y=380)
+    label_deplacement_moyen = customtkinter.CTkLabel(fenetre_page_compte.fenetre, text=f"Moyenne de deplacement : {moyen_deplacement}", font=('Sitka Text Semibold', 18), justify="left", wraplength=660, text_color="white")
+    label_deplacement_moyen.place(x=600,y=440)
+    label_victoire_cons = customtkinter.CTkLabel(fenetre_page_compte.fenetre, text=f"Victoire consécutive maximun : {cursor.execute("SELECT victoire_cons FROM compte WHERE Pseudo=?",(username,)).fetchone()[0]}", font=('Sitka Text Semibold', 18), justify="left", wraplength=660, text_color="white")
+    label_victoire_cons.place(x=600,y=500)
+    bandeau(fenetre_page_compte.fenetre,"fenetre_page_compte")
+    bouton_quitter=Bouton(fenetre_page_regle,50,50,10,2,'black','#e73535','#d12e2e','Quitter','black',('Sitka Text Semibold',30),860,10,quit)
+    bouton_quitter.draw_bouton()
+
+
+def regle():
+    global btn_state,fenetre_page_regle
+    fenetre_page_principal.fenetre_enlever()
+    fenetre_page_regle.fenetre_apparaitre()
+    btn_state=False
+    label = customtkinter.CTkLabel(fenetre_page_regle.fenetre, text="Règles du Solitaire : \n\nAu début de la partie, vous devez commencer à créer des suites parmi les sept piles du tableau. Vous ne pouvez empiler les cartes que dans l'ordre décroissant (roi, reine, valet, 10, etc.), en alternant les couleurs (par exemple, rouge, noir, rouge, noir, etc.). \n\nIl est possible de déplacer les suites d'une pile à l'autre. Vous pouvez toujours commencer à former une pile à partir de n'importe quelle carte, pas nécessairement un roi. Lorsque vous déplacez une carte visible d'une pile, une carte cachée située en dessous est retournée pour devenir visible. C'est ainsi que vous découvrez les cartes sur le tableau lorsque vous jouez au Solitaire. \n\nQuand l'une des sept piles du tableau est vide, vous pouvez placer un roi ou une suite commençant par un roi (et uniquement un roi) sur l'emplacement libre. \n\nVous ne pouvez déplacer que les cartes ou les suites supérieures. Dans les cas où le plateau n'offre plus aucune action possible, vous pouvez introduire de nouvelles cartes dans le jeu à l'aide de la pioche.", font=('Sitka Text Semibold', 18), justify="left", wraplength=660, text_color="white")
+    label.pack(padx=60, pady=60)
+    bandeau(fenetre_page_regle.fenetre,"fenetre_page_regle")
+    bouton_quitter=Bouton(fenetre_page_regle,50,50,10,2,'black','#e73535','#d12e2e','Quitter','black',('Sitka Text Semibold',30),860,10,quit)
+    bouton_quitter.draw_bouton()
 
 """Creation et affichage du menu/bandeau de navigation"""
-def bandeau():
-    global nav_icon,btn_state,close_icon,NavBar,frame,connexion_statut
+def bandeau(window,fenetre):
+    global nav_icon,btn_state,close_icon,NavBar,frame,connexion_statut,username
+    try:
+        NavBar.destroy()
+        frame.destroy()
+    except:
+        pass
     #Chargement des images
     nav_icon = PhotoImage(file="./images/navbar.png")
     close_icon = PhotoImage(file="images/close.png")
 
     #Création du frame principal
-    frame = Frame(fenetre_page_principal.fenetre, bg='#145810',height=40,width=500)
+    frame = Frame(window, bg='#145810',height=40,width=500)
 
-    frame.pack(side="top", fill=X)
+    frame.place(x=0,y=0)
     frame.lower()
     #Fonction pour basculer l'affichage du menu
     def switch():
@@ -256,15 +353,16 @@ def bandeau():
     navbar_btn.grid(row=1, column=1)
 
     #Création du menu déroulant
-    NavBar = Frame(fenetre_page_principal.fenetre, bg='black', height=700, width=250)
+    NavBar = Frame(window, bg='black', height=700, width=250)
     NavBar.place(x=-250, y=0)
     NavBar.lift()
 
-    with open('./donnees/info.csv', mode="r", newline='') as fichier_csv:
-        lecteur_csv = csv.DictReader(fichier_csv)
-        donnees = list(lecteur_csv)
-    for ligne in donnees:
-        if ligne['statut_connexion']=='Oui':
+
+
+    statut_co= [co[0] for co in cursor.execute("SELECT statut_connexion FROM compte").fetchall()]
+    for donnees in statut_co:
+        if donnees=='Oui':
+            username=cursor.execute("SELECT Pseudo FROM compte WHERE statut_connexion=?",("Oui",)).fetchone()[0]
             connexion_statut=True
             compte=Bouton(NavBar,40,40,6,1,"white",'black','#ada1a1','Compte',"white",('artel 18 bold',24),50,60,None)
             compte.draw_bouton()
@@ -275,9 +373,28 @@ def bandeau():
         register=Bouton(NavBar,15,40,3,1,"white",'black','#252527','Créer son compte',"white",('artel 18 bold',12),115,50,inscription)
         register.draw_bouton()
     else:
-        compte=Bouton(NavBar,40,40,6,1,"white",'black','#ada1a1','Compte',"white",('artel 18 bold',24),50,60,None)
+        compte=Bouton(NavBar,150,40,6,1,"white",'black','#ada1a1','Compte',"white",('artel 18 bold',24),50,60,compte_pg)
         compte.draw_bouton()
+    
+    if fenetre=="fenetre_page_regle":
+        menu_btn=Bouton(NavBar,150,40,6,1,"#a09d8a",'black','#252527','Menu',"white",('artel 18 bold',24),50,150,retour)
+        menu_btn.draw_bouton()
+        """
+        compte_btn=Bouton(NavBar,150,40,6,1,"#a09d8a",'black','#252527','Compte',"white",('artel 18 bold',24),50,200,compte_pg)
+        compte_btn.draw_bouton()"""
+    
+    elif fenetre=="fenetre_page_principal":
+        regle_btn=Bouton(NavBar,150,40,6,1,"#a09d8a",'black','#252527','Regles',"white",('artel 18 bold',24),50,150,regle)
+        regle_btn.draw_bouton()
+        """
+        compte_btn=Bouton(NavBar,150,40,6,1,"#a09d8a",'black','#252527','Compte',"white",('artel 18 bold',24),50,200,compte_pg)
+        compte_btn.draw_bouton()"""
 
+    elif fenetre=="fenetre_page_compte":
+        menu_btn=Bouton(NavBar,150,40,6,1,"#a09d8a",'black','#252527','Menu',"white",('artel 18 bold',24),50,150,retour)
+        menu_btn.draw_bouton()
+        regle_btn=Bouton(NavBar,150,40,6,1,"#a09d8a",'black','#252527','Regles',"white",('artel 18 bold',24),50,200,regle)
+        regle_btn.draw_bouton()
     deconnection_btn=Bouton(NavBar,40,40,6,1,"#a09d8a",'black','#252527','Se Deconnecter',"white",('artel 18 bold',24),35,600,deconnection)
     deconnection_btn.draw_bouton()
 
@@ -287,12 +404,14 @@ def bandeau():
     close_btn = Button(NavBar, image=close_icon, bg='black', bd=0, command=switch)
     close_btn.place(x=200, y=5)
 
-bandeau()
+bandeau(fenetre_page_principal.fenetre,"fenetre_page_principal")
+
+
 
 def jeux():
+    global fenetre_jeu
     fenetre_page_principal.fenetre_enlever()
-    fenetre_jeu = Fenetre(1000, 700, 400,150,'#145810','Solitaire',"./images/fond_plateau.png",fenetre_page_principal.fenetre)
-    fenetre_jeu.draw_fenetre()
+    fenetre_jeu.fenetre_apparaitre()
 
     mon_dictionnaire_carte = {"As de PIQUE": r"images\Jeux_de_carte\ace_of_spades.png", "2 de PIQUE": r"images\Jeux_de_carte\2_of_spades.png", "3 de PIQUE": r"images\Jeux_de_carte\3_of_spades.png", "4 de PIQUE": r"images\Jeux_de_carte\4_of_spades.png", "5 de PIQUE": r"images\Jeux_de_carte\5_of_spades.png", "6 de PIQUE": r"images\Jeux_de_carte\6_of_spades.png", "7 de PIQUE": r"images\Jeux_de_carte\7_of_spades.png", "8 de PIQUE": r"images\Jeux_de_carte\8_of_spades.png", "9 de PIQUE": r"images\Jeux_de_carte\9_of_spades.png", "10 de PIQUE": r"images\Jeux_de_carte\10_of_spades.png", "Valet de PIQUE": r"images\Jeux_de_carte\jack_of_spades2.png", "Dame de PIQUE": r"images\Jeux_de_carte\queen_of_spades2.png", "Roi de PIQUE": r"images\Jeux_de_carte\king_of_spades2.png", "As de COEUR": r"images\Jeux_de_carte\ace_of_hearts.png", "2 de COEUR": r"images\Jeux_de_carte\2_of_hearts.png", "3 de COEUR": r"images\Jeux_de_carte\3_of_hearts.png", "4 de COEUR": r"images\Jeux_de_carte\4_of_hearts.png", "5 de COEUR": r"images\Jeux_de_carte\5_of_hearts.png", "6 de COEUR": r"images\Jeux_de_carte\6_of_hearts.png", "7 de COEUR": r"images\Jeux_de_carte\7_of_hearts.png", "8 de COEUR": r"images\Jeux_de_carte\8_of_hearts.png", "9 de COEUR": r"images\Jeux_de_carte\9_of_hearts.png", "10 de COEUR": r"images\Jeux_de_carte\10_of_hearts.png", "Valet de COEUR": r"images\Jeux_de_carte\jack_of_hearts2.png", "Dame de COEUR": r"images\Jeux_de_carte\queen_of_hearts2.png", "Roi de COEUR": r"images\Jeux_de_carte\king_of_hearts2.png", "As de CARREAU": r"images\Jeux_de_carte\ace_of_diamonds.png", "2 de CARREAU": r"images\Jeux_de_carte\2_of_diamonds.png", "3 de CARREAU": r"images\Jeux_de_carte\3_of_diamonds.png", "4 de CARREAU": r"images\Jeux_de_carte\4_of_diamonds.png", "5 de CARREAU": r"images\Jeux_de_carte\5_of_diamonds.png", "6 de CARREAU": r"images\Jeux_de_carte\6_of_diamonds.png", "7 de CARREAU": r"images\Jeux_de_carte\7_of_diamonds.png", "8 de CARREAU": r"images\Jeux_de_carte\8_of_diamonds.png", "9 de CARREAU": r"images\Jeux_de_carte\9_of_diamonds.png", "10 de CARREAU": r"images\Jeux_de_carte\10_of_diamonds.png", "Valet de CARREAU":r"images\Jeux_de_carte\jack_of_diamonds2.png", "Dame de CARREAU": r"images\Jeux_de_carte\queen_of_diamonds2.png", "Roi de CARREAU": r"images\Jeux_de_carte\king_of_diamonds2.png", "As de TREFLE": r"images\Jeux_de_carte\ace_of_clubs.png", "2 de TREFLE": r"images\Jeux_de_carte\2_of_clubs.png", "3 de TREFLE": r"images\Jeux_de_carte\3_of_clubs.png", "4 de TREFLE": r"images\Jeux_de_carte\4_of_clubs.png", "5 de TREFLE": r"images\Jeux_de_carte\5_of_clubs.png", "6 de TREFLE": r"images\Jeux_de_carte\6_of_clubs.png", "7 de TREFLE": r"images\Jeux_de_carte\7_of_clubs.png", "8 de TREFLE": r"images\Jeux_de_carte\8_of_clubs.png", "9 de TREFLE": r"images\Jeux_de_carte\9_of_clubs.png", "10 de TREFLE": r"images\Jeux_de_carte\10_of_clubs.png", "Valet de TREFLE": r"images\Jeux_de_carte\jack_of_clubs.png", "Dame de TREFLE": r"images\Jeux_de_carte\queen_of_diamonds2.png", "Roi de TREFLE": r"images\Jeux_de_carte\king_of_clubs2.png"}
 
@@ -344,7 +463,7 @@ def jeux():
         
 
         
-           
+        
         
         def add_dragable(): 
             try:
