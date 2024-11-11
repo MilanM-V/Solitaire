@@ -8,7 +8,8 @@ from random import*
 from class_file import File
 import sqlite3
 from tkinter import messagebox
-
+import sys
+import time
 db = sqlite3.connect("./donnees/compte.db")
 cursor=db.cursor()
 
@@ -57,9 +58,12 @@ image_label_3image.place(x=200, y=-10)
 texte_page_principal = customtkinter.CTkLabel(fenetre_page_principal.fenetre, text = "Solitaire",text_color = '#22dc1c',font=('Sitka Text Semibold',50),fg_color='transparent')
 texte_page_principal.place(x=400,y=250)
 
-#Bouton Quitter
-bouton_quitter=Bouton(fenetre_page_principal,50,50,10,2,'black','#e73535','#d12e2e','Quitter','black',('Sitka Text Semibold',30),860,10,quit)
-bouton_quitter.draw_bouton()
+
+
+def quits():
+    cursor.execute("UPDATE compte SET temps_jeu=? WHERE Pseudo=?",(int(time.time() - temps_debut),username,))
+    db.commit()
+    sys.exit()
 
 def retour():
     global btn_state
@@ -111,6 +115,8 @@ def creation_compte():
                 bandeau(fenetre_page_principal.fenetre,"fenetre_page_principal")
                 db.execute("UPDATE compte SET statut_connexion=? WHERE statut_connexion=?",('Non','Oui'))
                 db.execute("UPDATE compte SET statut_connexion=? WHERE Pseudo=?",('Oui',username))
+                commencer_timer()
+                actualiser_temps()
 
                 db.commit()
             else:
@@ -207,7 +213,6 @@ def deconnection():
     bandeau(fenetre_page_principal.fenetre,"fenetre_page_principal")
 
 def lvl_compte():
-    print(username)
     xp=cursor.execute("SELECT xp FROM compte WHERE Pseudo=?",(username,)).fetchone()[0]
     if xp<=250:
         lvl=1
@@ -293,14 +298,17 @@ def compte_pg():
     label_best_temps.place(x=600,y=260)
     label_best_deplacement = customtkinter.CTkLabel(fenetre_page_compte.fenetre, text=f"Minimun de deplacement : {cursor.execute("SELECT best_deplacement FROM compte WHERE Pseudo=?",(username,)).fetchone()[0]}", font=('Sitka Text Semibold', 18), justify="left", wraplength=660, text_color="white")
     label_best_deplacement.place(x=600,y=320)
+    """
     label_temps_total = customtkinter.CTkLabel(fenetre_page_compte.fenetre, text=f"temps de jeux : {cursor.execute("SELECT temps_jeu FROM compte WHERE Pseudo=?",(username,)).fetchone()[0]}", font=('Sitka Text Semibold', 18), justify="left", wraplength=660, text_color="white")
     label_temps_total.place(x=600,y=380)
+    """
+    label_temps.place(x=600,y=380)
     label_deplacement_moyen = customtkinter.CTkLabel(fenetre_page_compte.fenetre, text=f"Moyenne de deplacement : {moyen_deplacement}", font=('Sitka Text Semibold', 18), justify="left", wraplength=660, text_color="white")
     label_deplacement_moyen.place(x=600,y=440)
     label_victoire_cons = customtkinter.CTkLabel(fenetre_page_compte.fenetre, text=f"Victoire consécutive maximun : {cursor.execute("SELECT victoire_cons FROM compte WHERE Pseudo=?",(username,)).fetchone()[0]}", font=('Sitka Text Semibold', 18), justify="left", wraplength=660, text_color="white")
     label_victoire_cons.place(x=600,y=500)
     bandeau(fenetre_page_compte.fenetre,"fenetre_page_compte")
-    bouton_quitter=Bouton(fenetre_page_regle,50,50,10,2,'black','#e73535','#d12e2e','Quitter','black',('Sitka Text Semibold',30),860,10,quit)
+    bouton_quitter=Bouton(fenetre_page_compte,50,50,10,2,'black','#e73535','#d12e2e','Quitter','black',('Sitka Text Semibold',30),860,10,quits)
     bouton_quitter.draw_bouton()
 
 
@@ -312,7 +320,7 @@ def regle():
     label = customtkinter.CTkLabel(fenetre_page_regle.fenetre, text="Règles du Solitaire : \n\nAu début de la partie, vous devez commencer à créer des suites parmi les sept piles du tableau. Vous ne pouvez empiler les cartes que dans l'ordre décroissant (roi, reine, valet, 10, etc.), en alternant les couleurs (par exemple, rouge, noir, rouge, noir, etc.). \n\nIl est possible de déplacer les suites d'une pile à l'autre. Vous pouvez toujours commencer à former une pile à partir de n'importe quelle carte, pas nécessairement un roi. Lorsque vous déplacez une carte visible d'une pile, une carte cachée située en dessous est retournée pour devenir visible. C'est ainsi que vous découvrez les cartes sur le tableau lorsque vous jouez au Solitaire. \n\nQuand l'une des sept piles du tableau est vide, vous pouvez placer un roi ou une suite commençant par un roi (et uniquement un roi) sur l'emplacement libre. \n\nVous ne pouvez déplacer que les cartes ou les suites supérieures. Dans les cas où le plateau n'offre plus aucune action possible, vous pouvez introduire de nouvelles cartes dans le jeu à l'aide de la pioche.", font=('Sitka Text Semibold', 18), justify="left", wraplength=660, text_color="white")
     label.pack(padx=60, pady=60)
     bandeau(fenetre_page_regle.fenetre,"fenetre_page_regle")
-    bouton_quitter=Bouton(fenetre_page_regle,50,50,10,2,'black','#e73535','#d12e2e','Quitter','black',('Sitka Text Semibold',30),860,10,quit)
+    bouton_quitter=Bouton(fenetre_page_regle,50,50,10,2,'black','#e73535','#d12e2e','Quitter','black',('Sitka Text Semibold',30),860,10,quits)
     bouton_quitter.draw_bouton()
 
 """Creation et affichage du menu/bandeau de navigation"""
@@ -633,10 +641,42 @@ def jeux():
         drop6=DragAndDrop(zone6,fenetre_jeu.fenetre,pile_zone6,drop=True,drag=False)
         drop7=DragAndDrop(zone7,fenetre_jeu.fenetre,pile_zone7,drop=True,drag=False)
     zone_drop()
-    bouton_quitter=Bouton(fenetre_jeu,50,50,10,2,'black','#e73535','#d12e2e','Quitter','black',('Sitka Text Semibold',30),860,10,quit)
+    bouton_quitter=Bouton(fenetre_jeu,50,50,10,2,'black','#e73535','#d12e2e','Quitter','black',('Sitka Text Semibold',30),860,10,quits)
     bouton_quitter.draw_bouton()
 
+#calcule le temps de jeu
 
+def convertir_temps(secondes):
+    heures = secondes // 3600
+    secondes %= 3600
+    minutes = secondes // 60
+    secondes %= 60
+    return "{:02}:{:02}:{:02}".format(int(heures), int(minutes), int(secondes))
+
+def  charger_dernier_temps():
+    temps=cursor.execute("SELECT temps_jeu FROM compte WHERE Pseudo=?",(username,)).fetchone()[0]
+    return temps
+    
+def commencer_timer():
+    global temps_debut
+    temps_debut = time.time() - charger_dernier_temps()
+
+label_temps = customtkinter.CTkLabel(fenetre_page_compte.fenetre, text="Temps de jeu: 00:00:00",font=('Sitka Text Semibold', 18), justify="left", wraplength=660, text_color="white")
+
+def actualiser_temps():
+    if temps_debut:
+        temps_actuel = int(time.time() - temps_debut)
+        label_temps.configure(text="Temps de jeu: " + convertir_temps(temps_actuel))
+    fenetre_page_principal.fenetre.after(1000, actualiser_temps)
+
+try:
+    commencer_timer()
+    actualiser_temps()
+except:
+    pass
+#Bouton Quitter
+bouton_quitter=Bouton(fenetre_page_principal,50,50,10,2,'black','#e73535','#d12e2e','Quitter','black',('Sitka Text Semibold',30),860,10,quits)
+bouton_quitter.draw_bouton()
 #Bouton de Jeu
 bouton_jouer=Bouton(fenetre_page_principal,50,50,10,1,'#247c26','#36c170','#358f5a','Jouer','white',('Sitka Text Semibold',30),450,330,jeux)
 bouton_jouer.draw_bouton()
