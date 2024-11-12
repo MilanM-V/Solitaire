@@ -19,7 +19,7 @@ btn_state = False
 try:
     username=cursor.execute("SELECT Pseudo FROM compte WHERE statut_connexion=?",("Oui",)).fetchone()[0]
 except:
-    pass
+    username=None
 fenetre_page_principal = Fenetre(1000, 700, 400,150,'#145810','Solitaire',None,None)
 fenetre_page_principal.draw_fenetre()
 fenetre_page_regle = Fenetre(1000, 700, 400,150,'#145810','Solitaire',None,fenetre_page_principal.fenetre)
@@ -31,7 +31,10 @@ fenetre_jeu.fenetre_enlever()
 fenetre_page_compte = Fenetre(1000, 700, 400,150,'#145810','Solitaire',None,fenetre_page_principal.fenetre)
 fenetre_page_compte.draw_fenetre()
 fenetre_page_compte.fenetre_enlever()
-
+fenetre_page_succes = Fenetre(1000, 700, 400,150,'#145810','Solitaire',None,fenetre_page_principal.fenetre)
+fenetre_page_succes.draw_fenetre()
+fenetre_page_succes.fenetre_enlever()
+fenetre_active,fenetre_active_text=fenetre_page_principal.fenetre,"fenetre_page_principal"
 
 #Image 4 carte
 image_path_4_carte = "images/carte_image-removebg-preview.png"
@@ -49,7 +52,7 @@ image_4_socle = customtkinter.CTkImage(Image.open(image_path_4_socle),size=(281,
 image_label_4_socle = customtkinter.CTkLabel(fenetre_page_principal.fenetre, image=image_4_socle,text="")
 image_label_4_socle.place(x=50, y=300)
 #Image 3cartes
-image_path_3image = "images/3photo.png"
+image_path_3image = "./images/3photo.png"
 image_3image = customtkinter.CTkImage(Image.open(image_path_3image),size=(600,300))
 image_label_3image = customtkinter.CTkLabel(fenetre_page_principal.fenetre, image=image_3image,text="")
 image_label_3image.place(x=200, y=-10)
@@ -61,26 +64,31 @@ texte_page_principal.place(x=400,y=250)
 
 
 def quits():
-    cursor.execute("UPDATE compte SET temps_jeu=? WHERE Pseudo=?",(int(time.time() - temps_debut),username,))
-    db.commit()
+    try:
+        cursor.execute("UPDATE compte SET temps_jeu=? WHERE Pseudo=?",(int(time.time() - temps_debut),username,))
+        db.commit()
+    except:
+        pass
     sys.exit()
 
 def retour():
-    global btn_state
+    global btn_state,fenetre_active
     fenetre_page_compte.fenetre_enlever()
     fenetre_page_regle.fenetre_enlever()
+    fenetre_page_succes.fenetre_enlever()
     fenetre_jeu.fenetre_enlever()
     fenetre_page_principal.fenetre_apparaitre()
     btn_state=False
     NavBar.destroy()
     frame.destroy()
-    bandeau(fenetre_page_principal.fenetre,"fenetre_page_principal")
+    fenetre_active,fenetre_active_text=fenetre_page_principal.fenetre,"fenetre_page_principal"
+
+    bandeau(fenetre_active,fenetre_active_text)
 
 """Creation de la fenetre de connection"""
 def creation_compte():
-    fenetre_compte=Fenetre(200,200,500,250,'#10480d','Connectez-vous à votre compte',None,fenetre_page_principal.fenetre)
+    fenetre_compte=Fenetre(200,200,500,250,'black','Connectez-vous à votre compte',None,fenetre_page_principal.fenetre)
     fenetre_compte.draw_fenetre()
-    fenetre_compte.fenetre.overrideredirect(True)
     quitter=Bouton(fenetre_compte,50,25,4,2,'Black','#e73535','#d12e2e','Quitter','Black',('Sitka Text Semibold',12),145,0,fenetre_compte.fenetre_enlever)
     quitter.draw_bouton()
 
@@ -112,7 +120,7 @@ def creation_compte():
                 NavBar.destroy()
                 frame.destroy()
                 btn_state=False
-                bandeau(fenetre_page_principal.fenetre,"fenetre_page_principal")
+                bandeau(fenetre_active,fenetre_active_text)
                 db.execute("UPDATE compte SET statut_connexion=? WHERE statut_connexion=?",('Non','Oui'))
                 db.execute("UPDATE compte SET statut_connexion=? WHERE Pseudo=?",('Oui',username))
                 commencer_timer()
@@ -126,31 +134,30 @@ def creation_compte():
                 messagebox.showerror("Erreur d'authentification", "Ce compte n'existe pas")#erreur messagebox car Pseudo incorrect
             
     #création du label d'entré du Pseudo
-    label_username = Label(fenetre_compte.fenetre, text="Pseudonyme:",bg="#10480d")
+    label_username = customtkinter.CTkLabel(fenetre_compte.fenetre, text="Pseudonyme:",text_color='#ffffff')
     label_username.pack()
     label_username.place(x=35, y=15)
-    entry_username = Entry(fenetre_compte.fenetre)
+    entry_username = customtkinter.CTkEntry(fenetre_compte.fenetre,border_color='purple')
     entry_username.pack()
     entry_username.place(x=35, y=40)
 
     #création du label mdp
-    label_password = Label(fenetre_compte.fenetre, text="Mot De Passe:",bg="#10480d")
+    label_password = customtkinter.CTkLabel(fenetre_compte.fenetre, text="Mot De Passe:",text_color='#ffffff')
     label_password.pack()
     label_password.place(x=35, y=70)
-    entry_password = Entry(fenetre_compte.fenetre, show="*")
+    entry_password = customtkinter.CTkEntry(fenetre_compte.fenetre, show="*",border_color='purple')
     entry_password.pack()
     entry_password.place(x=35, y=100)
 
     #Bouton connection
-    login_button=Bouton(fenetre_compte,80,30,4,1,'Black','#d6cfa0','#bfb88b','Se connecter','Black',('Sitka Text Semibold',11),60,140,login)
+    login_button=Bouton(fenetre_compte,80,30,4,1,'Black','purple','#bfb88b','Se connecter','#ffffff',('Sitka Text Semibold',11),60,140,login)
     login_button.draw_bouton()
 
 #fonction pour se creer un compte
 def inscription():
 
-    fenetre_inscription=Fenetre(200,200,500,250,'#10480d','Inscrivez-vous',None,fenetre_page_principal.fenetre)
+    fenetre_inscription=Fenetre(200,200,500,250,'black','Inscrivez-vous',None,fenetre_page_principal.fenetre)
     fenetre_inscription.draw_fenetre()
-    fenetre_inscription.fenetre.overrideredirect(True)
     quitter=Bouton(fenetre_inscription,50,25,4,2,'Black','#e73535','#d12e2e','Quitter','Black',('Sitka Text Semibold',12),145,0,fenetre_inscription.fenetre_enlever)
     quitter.draw_bouton()
 
@@ -170,47 +177,50 @@ def inscription():
         
         if present(nom) ==True:
             cursor.execute("INSERT INTO compte (Pseudo,Mdp,statut_connexion) VALUES (?,?,?)",(nom,password,"Oui"))
+            cursor.execute("INSERT INTO Succee (Pseudo) VALUES (?)",(nom,))
             db.commit()
             """mettre à jour le bandeau"""
             connexion_statut=True
             NavBar.destroy()
             frame.destroy()
             btn_state=False
-            bandeau(fenetre_page_principal.fenetre,"fenetre_page_principal")
+            bandeau(fenetre_active,fenetre_active_text)
+            
             
             fenetre_inscription.fenetre_enlever()
         else:
             messagebox.showerror("Erreur de création de compte", "Ce Pseudo est déjà utilisé")
 
     # Création des étiquettes et des champs de saisie
-    nom_label = Label(fenetre_inscription.fenetre, text="Nom :", bg="#10480d")
+    nom_label = customtkinter.CTkLabel(fenetre_inscription.fenetre, text="Pseudo :",text_color='#ffffff')
     nom_label.grid(row=0, column=0)
     nom_label.place(x=35, y=15)
-    mdp_label = Label(fenetre_inscription.fenetre, text="Mot de Passe :", bg="#10480d")
+    mdp_label = customtkinter.CTkLabel(fenetre_inscription.fenetre, text="Mot de Passe :",text_color='#ffffff')
     mdp_label.grid(row=1, column=0)
     mdp_label.place(x=35, y=70)
 
-    entry_nom = Entry(fenetre_inscription.fenetre)
+    entry_nom = customtkinter.CTkEntry(fenetre_inscription.fenetre,border_color='purple')
     entry_nom.grid(row=0, column=1)
     entry_nom.place(x=35, y=40)
-    entry_password = Entry(fenetre_inscription.fenetre)
+    entry_password = customtkinter.CTkEntry(fenetre_inscription.fenetre,border_color='purple')
     entry_password.grid(row=1, column=1)
     entry_password.place(x=35, y=100)
 
     # Création du bouton pour enregistrer les informations
-    bouton_enregistrer=Bouton(fenetre_inscription,80,30,4,1,'Black','#d6cfa0','#bfb88b','Enregistrer','Black',('Sitka Text Semibold',11),60,140,enregistrer_infos)
+    bouton_enregistrer=Bouton(fenetre_inscription,80,30,4,1,'Black','purple','#bfb88b','Enregistrer','#ffffff',('Sitka Text Semibold',11),60,140,enregistrer_infos)
     bouton_enregistrer.draw_bouton()
 
 
 def deconnection():
-    global connexion_statut,btn_state
+    global connexion_statut,btn_state,fenetre_active,fenetre_active_text
     connexion_statut=False
     db.execute("UPDATE compte SET statut_connexion=? WHERE statut_connexion=?",('Non','Oui'))
     db.commit()
     NavBar.destroy()
     frame.destroy()
     btn_state=False
-    bandeau(fenetre_page_principal.fenetre,"fenetre_page_principal")
+    bandeau(fenetre_active,fenetre_active_text)
+    
 
 def lvl_compte():
     xp=cursor.execute("SELECT xp FROM compte WHERE Pseudo=?",(username,)).fetchone()[0]
@@ -256,10 +266,11 @@ def lvl_compte():
         return progress,lvl
 
 def compte_pg():
-    global btn_state
+    global btn_state,fenetre_active,fenetre_active_text
     fenetre_page_regle.fenetre_enlever()
     fenetre_jeu.fenetre_enlever()
     fenetre_page_principal.fenetre_enlever()
+    fenetre_page_succes.fenetre_enlever()
     fenetre_page_compte.fenetre_apparaitre()
     btn_state=False
     progressbar = customtkinter.CTkProgressBar(fenetre_page_compte.fenetre, orientation="horizontal",height=30,fg_color='gray',progress_color='black')
@@ -286,17 +297,17 @@ def compte_pg():
     label_ratio_win.place(x=130,y=260)
     label_lvl_compte = customtkinter.CTkLabel(fenetre_page_compte.fenetre, text=f"Niveaux du compte : {lvl}", font=('Sitka Text Semibold', 18), justify="left", wraplength=660, text_color="white")
     label_lvl_compte.place(x=400,y=120)
-    label_game_play = customtkinter.CTkLabel(fenetre_page_compte.fenetre, text=f"Parties jouées : {cursor.execute("SELECT nb_parties FROM compte WHERE Pseudo=?",(username,)).fetchone()[0]}", font=('Sitka Text Semibold', 18), justify="left", wraplength=660, text_color="white")
+    label_game_play = customtkinter.CTkLabel(fenetre_page_compte.fenetre, text=f'Parties jouées : {cursor.execute("SELECT nb_parties FROM compte WHERE Pseudo=?",(username,)).fetchone()[0]}', font=('Sitka Text Semibold', 18), justify="left", wraplength=660, text_color="white")
     label_game_play.place(x=130,y=320)
-    label_game_win = customtkinter.CTkLabel(fenetre_page_compte.fenetre, text=f"Parties gagner : {cursor.execute("SELECT win FROM compte WHERE Pseudo=?",(username,)).fetchone()[0]}", font=('Sitka Text Semibold', 18), justify="left", wraplength=660, text_color="white")
+    label_game_win = customtkinter.CTkLabel(fenetre_page_compte.fenetre, text=f'Parties gagner : {cursor.execute("SELECT win FROM compte WHERE Pseudo=?",(username,)).fetchone()[0]}', font=('Sitka Text Semibold', 18), justify="left", wraplength=660, text_color="white")
     label_game_win.place(x=130,y=380)
-    label_game_loose = customtkinter.CTkLabel(fenetre_page_compte.fenetre, text=f"Parties perdu : {cursor.execute("SELECT loose FROM compte WHERE Pseudo=?",(username,)).fetchone()[0]}", font=('Sitka Text Semibold', 18), justify="left", wraplength=660, text_color="white")
+    label_game_loose = customtkinter.CTkLabel(fenetre_page_compte.fenetre, text=f'Parties perdu : {cursor.execute("SELECT loose FROM compte WHERE Pseudo=?",(username,)).fetchone()[0]}', font=('Sitka Text Semibold', 18), justify="left", wraplength=660, text_color="white")
     label_game_loose.place(x=130,y=440)
-    label_best_score = customtkinter.CTkLabel(fenetre_page_compte.fenetre, text=f"Meilleur score : {cursor.execute("SELECT best_score FROM compte WHERE Pseudo=?",(username,)).fetchone()[0]}", font=('Sitka Text Semibold', 18), justify="left", wraplength=660, text_color="white")
+    label_best_score = customtkinter.CTkLabel(fenetre_page_compte.fenetre, text=f'Meilleur score : {cursor.execute("SELECT best_score FROM compte WHERE Pseudo=?",(username,)).fetchone()[0]}', font=('Sitka Text Semibold', 18), justify="left", wraplength=660, text_color="white")
     label_best_score.place(x=130,y=500)
-    label_best_temps = customtkinter.CTkLabel(fenetre_page_compte.fenetre, text=f"Meilleur temps : {cursor.execute("SELECT best_temps FROM compte WHERE Pseudo=?",(username,)).fetchone()[0]}", font=('Sitka Text Semibold', 18), justify="left", wraplength=660, text_color="white")
+    label_best_temps = customtkinter.CTkLabel(fenetre_page_compte.fenetre, text=f'Meilleur temps : {cursor.execute("SELECT best_temps FROM compte WHERE Pseudo=?",(username,)).fetchone()[0]}', font=('Sitka Text Semibold', 18), justify="left", wraplength=660, text_color="white")
     label_best_temps.place(x=600,y=260)
-    label_best_deplacement = customtkinter.CTkLabel(fenetre_page_compte.fenetre, text=f"Minimun de deplacement : {cursor.execute("SELECT best_deplacement FROM compte WHERE Pseudo=?",(username,)).fetchone()[0]}", font=('Sitka Text Semibold', 18), justify="left", wraplength=660, text_color="white")
+    label_best_deplacement = customtkinter.CTkLabel(fenetre_page_compte.fenetre, text=f'Minimun de deplacement : {cursor.execute("SELECT best_deplacement FROM compte WHERE Pseudo=?",(username,)).fetchone()[0]}', font=('Sitka Text Semibold', 18), justify="left", wraplength=660, text_color="white")
     label_best_deplacement.place(x=600,y=320)
     """
     label_temps_total = customtkinter.CTkLabel(fenetre_page_compte.fenetre, text=f"temps de jeux : {cursor.execute("SELECT temps_jeu FROM compte WHERE Pseudo=?",(username,)).fetchone()[0]}", font=('Sitka Text Semibold', 18), justify="left", wraplength=660, text_color="white")
@@ -305,21 +316,147 @@ def compte_pg():
     label_temps.place(x=600,y=380)
     label_deplacement_moyen = customtkinter.CTkLabel(fenetre_page_compte.fenetre, text=f"Moyenne de deplacement : {moyen_deplacement}", font=('Sitka Text Semibold', 18), justify="left", wraplength=660, text_color="white")
     label_deplacement_moyen.place(x=600,y=440)
-    label_victoire_cons = customtkinter.CTkLabel(fenetre_page_compte.fenetre, text=f"Victoire consécutive maximun : {cursor.execute("SELECT victoire_cons FROM compte WHERE Pseudo=?",(username,)).fetchone()[0]}", font=('Sitka Text Semibold', 18), justify="left", wraplength=660, text_color="white")
+    label_victoire_cons = customtkinter.CTkLabel(fenetre_page_compte.fenetre, text=f'Victoire consécutive maximun : {cursor.execute("SELECT victoire_cons FROM compte WHERE Pseudo=?",(username,)).fetchone()[0]}', font=('Sitka Text Semibold', 18), justify="left", wraplength=660, text_color="white")
     label_victoire_cons.place(x=600,y=500)
-    bandeau(fenetre_page_compte.fenetre,"fenetre_page_compte")
+    fenetre_active,fenetre_active_text=fenetre_page_compte.fenetre,"fenetre_page_compte"
+    bandeau(fenetre_active,fenetre_active_text)
     bouton_quitter=Bouton(fenetre_page_compte,50,50,10,2,'black','#e73535','#d12e2e','Quitter','black',('Sitka Text Semibold',30),860,10,quits)
     bouton_quitter.draw_bouton()
 
-
-def regle():
-    global btn_state,fenetre_page_regle
+def succes_pg():
+    fenetre_page_regle.fenetre_enlever()
+    fenetre_jeu.fenetre_enlever()
     fenetre_page_principal.fenetre_enlever()
+    fenetre_page_succes.fenetre_apparaitre()
+    fenetre_page_compte.fenetre_enlever()
+    titre_label = customtkinter.CTkLabel(fenetre_page_succes.fenetre, text="Succée débloquer",font=('Sitka Text Semibold', 30),text_color='red')
+    titre_label.place(x=380, y=15)
+
+    succee1=cursor.execute(f"SELECT suc1 FROM Succee WHERE Pseudo=?",(username,)).fetchone()[0]
+    succee2=cursor.execute(f"SELECT suc2 FROM Succee WHERE Pseudo=?",(username,)).fetchone()[0]
+    succee3=cursor.execute(f"SELECT suc3 FROM Succee WHERE Pseudo=?",(username,)).fetchone()[0]
+    succee4=cursor.execute(f"SELECT suc4 FROM Succee WHERE Pseudo=?",(username,)).fetchone()[0]
+    succee5=cursor.execute(f"SELECT suc5 FROM Succee WHERE Pseudo=?",(username,)).fetchone()[0]
+    succee6=cursor.execute(f"SELECT suc6 FROM Succee WHERE Pseudo=?",(username,)).fetchone()[0]
+    succee7=cursor.execute(f"SELECT suc7 FROM Succee WHERE Pseudo=?",(username,)).fetchone()[0]
+    succee8=cursor.execute(f"SELECT suc8 FROM Succee WHERE Pseudo=?",(username,)).fetchone()[0]
+    succee9=cursor.execute(f"SELECT suc9 FROM Succee WHERE Pseudo=?",(username,)).fetchone()[0]
+    succee10=cursor.execute(f"SELECT suc10 FROM Succee WHERE Pseudo=?",(username,)).fetchone()[0]
+    succee11=cursor.execute(f"SELECT suc11 FROM Succee WHERE Pseudo=?",(username,)).fetchone()[0]
+    succee12=cursor.execute(f"SELECT suc12 FROM Succee WHERE Pseudo=?",(username,)).fetchone()[0]
+    succee13=cursor.execute(f"SELECT suc13 FROM Succee WHERE Pseudo=?",(username,)).fetchone()[0]
+    succee14=cursor.execute(f"SELECT suc14 FROM Succee WHERE Pseudo=?",(username,)).fetchone()[0]
+
+    def checkbox_event():
+        global btn_state
+        btn_state=False
+        if succee1==1:
+            checkbox_succee_1.select()
+        else:
+            checkbox_succee_1.deselect()
+        if succee2==1:
+            checkbox_succee_2.select()
+            if succee3==1:
+                checkbox_succee_3.select()
+                if succee4==1:
+                    checkbox_succee_4.select()
+                else:
+                    checkbox_succee_4.deselect()
+            else:
+                checkbox_succee_3.deselect()
+        else:
+            checkbox_succee_2.deselect()
+        if succee5==1:
+            checkbox_succee_5.select()
+            if succee6==1:
+                checkbox_succee_6.select()
+            else:
+                checkbox_succee_6.deselect()
+        else:
+            checkbox_succee_5.deselect()
+            checkbox_succee_6.deselect()
+        if succee7==1:
+            checkbox_succee_7.select()
+            if succee8==1:
+                checkbox_succee_8.select()
+            else:
+                checkbox_succee_8.deselect()
+        else:
+            checkbox_succee_7.deselect()
+            checkbox_succee_8.deselect()
+        if succee9==1:
+            checkbox_succee_9.select()
+            if succee10==1:
+                checkbox_succee_10.select()
+                if succee11==1:
+                    checkbox_succee_11.select()
+                else:
+                    checkbox_succee_11.deselect()
+            else:
+                checkbox_succee_10.deselect()
+        else:
+            checkbox_succee_11.deselect()
+            checkbox_succee_10.deselect()
+            checkbox_succee_9.deselect()
+        if succee12==1:
+            checkbox_succee_12.select()
+            if succee13==1:
+                checkbox_succee_13.select()
+                if succee14==1:
+                    checkbox_succee_14.select()
+                else:
+                    checkbox_succee_14.deselect()
+            else:
+                checkbox_succee_13.deselect()
+        else:
+            checkbox_succee_13.deselect()
+            checkbox_succee_14.deselect()
+            checkbox_succee_12.deselect()
+        
+
+    checkbox_succee_1 = customtkinter.CTkCheckBox(fenetre_page_succes.fenetre, text="Faire 5000 pts en 1 partie", command=checkbox_event,width=50,height=50,font=('Sitka Text Semibold', 18))
+    checkbox_succee_1.place(x=100,y=100)
+    checkbox_succee_2 = customtkinter.CTkCheckBox(fenetre_page_succes.fenetre, text="Jouer 10 parties", command=checkbox_event,width=50,height=50,font=('Sitka Text Semibold', 18))
+    checkbox_succee_2.place(x=100,y=180)
+    checkbox_succee_3 = customtkinter.CTkCheckBox(fenetre_page_succes.fenetre, text="Jouer 50 parties", command=checkbox_event,width=50,height=50,font=('Sitka Text Semibold', 18))
+    checkbox_succee_3.place(x=100,y=260)
+    checkbox_succee_4 = customtkinter.CTkCheckBox(fenetre_page_succes.fenetre, text="Jouer 100 parties", command=checkbox_event,width=50,height=50,font=('Sitka Text Semibold', 18))
+    checkbox_succee_4.place(x=100,y=340)
+    checkbox_succee_5 = customtkinter.CTkCheckBox(fenetre_page_succes.fenetre, text="Gagner une partie en moins de 3 min ", command=checkbox_event,width=50,height=50,font=('Sitka Text Semibold', 18))
+    checkbox_succee_5.place(x=100,y=420)
+    checkbox_succee_6 = customtkinter.CTkCheckBox(fenetre_page_succes.fenetre, text="Gagner une partie en moins de 5 min", command=checkbox_event,width=50,height=50,font=('Sitka Text Semibold', 18))
+    checkbox_succee_6.place(x=100,y=500)
+    checkbox_succee_7 = customtkinter.CTkCheckBox(fenetre_page_succes.fenetre, text="Gagner 5 parties d'affilées", command=checkbox_event,width=50,height=50,font=('Sitka Text Semibold', 18))
+    checkbox_succee_7.place(x=100,y=580)
+
+    checkbox_succee_8 = customtkinter.CTkCheckBox(fenetre_page_succes.fenetre, text="Gagner 10 parties d'affilées", command=checkbox_event,width=50,height=50,font=('Sitka Text Semibold', 18))
+    checkbox_succee_8.place(x=600,y=100)
+    checkbox_succee_9 = customtkinter.CTkCheckBox(fenetre_page_succes.fenetre, text="Jouer 1h", command=checkbox_event,width=50,height=50,font=('Sitka Text Semibold', 18))
+    checkbox_succee_9.place(x=600,y=180)
+    checkbox_succee_10 = customtkinter.CTkCheckBox(fenetre_page_succes.fenetre, text="Jouer 10h", command=checkbox_event,width=50,height=50,font=('Sitka Text Semibold', 18))
+    checkbox_succee_10.place(x=600,y=260)
+    checkbox_succee_11 = customtkinter.CTkCheckBox(fenetre_page_succes.fenetre, text="Jouer 100h", command=checkbox_event,width=50,height=50,font=('Sitka Text Semibold', 18))
+    checkbox_succee_11.place(x=600,y=340)
+    checkbox_succee_12 = customtkinter.CTkCheckBox(fenetre_page_succes.fenetre, text="Atteindre le lvl 10", command=checkbox_event,width=50,height=50,font=('Sitka Text Semibold', 18))
+    checkbox_succee_12.place(x=600,y=420)
+    checkbox_succee_13 = customtkinter.CTkCheckBox(fenetre_page_succes.fenetre, text="Atteindre le lvl 25", command=checkbox_event,width=50,height=50,font=('Sitka Text Semibold', 18))
+    checkbox_succee_13.place(x=600,y=500)
+    checkbox_succee_14 = customtkinter.CTkCheckBox(fenetre_page_succes.fenetre, text="Atteindre le lvl 50", command=checkbox_event,width=50,height=50,font=('Sitka Text Semibold', 18))
+    checkbox_succee_14.place(x=600,y=580)
+
+    fenetre_active,fenetre_active_text=fenetre_page_succes.fenetre,"fenetre_page_succee"
+    bandeau(fenetre_active,fenetre_active_text)
+    checkbox_event()
+def regle():
+    global btn_state,fenetre_page_regle,fenetre_active,fenetre_active_text
+    fenetre_page_principal.fenetre_enlever()
+    fenetre_page_succes.fenetre_enlever()
     fenetre_page_regle.fenetre_apparaitre()
     btn_state=False
     label = customtkinter.CTkLabel(fenetre_page_regle.fenetre, text="Règles du Solitaire : \n\nAu début de la partie, vous devez commencer à créer des suites parmi les sept piles du tableau. Vous ne pouvez empiler les cartes que dans l'ordre décroissant (roi, reine, valet, 10, etc.), en alternant les couleurs (par exemple, rouge, noir, rouge, noir, etc.). \n\nIl est possible de déplacer les suites d'une pile à l'autre. Vous pouvez toujours commencer à former une pile à partir de n'importe quelle carte, pas nécessairement un roi. Lorsque vous déplacez une carte visible d'une pile, une carte cachée située en dessous est retournée pour devenir visible. C'est ainsi que vous découvrez les cartes sur le tableau lorsque vous jouez au Solitaire. \n\nQuand l'une des sept piles du tableau est vide, vous pouvez placer un roi ou une suite commençant par un roi (et uniquement un roi) sur l'emplacement libre. \n\nVous ne pouvez déplacer que les cartes ou les suites supérieures. Dans les cas où le plateau n'offre plus aucune action possible, vous pouvez introduire de nouvelles cartes dans le jeu à l'aide de la pioche.", font=('Sitka Text Semibold', 18), justify="left", wraplength=660, text_color="white")
     label.pack(padx=60, pady=60)
-    bandeau(fenetre_page_regle.fenetre,"fenetre_page_regle")
+    fenetre_active,fenetre_active_text=fenetre_page_regle.fenetre,"fenetre_page_regle"
+    bandeau(fenetre_active,fenetre_active_text)
     bouton_quitter=Bouton(fenetre_page_regle,50,50,10,2,'black','#e73535','#d12e2e','Quitter','black',('Sitka Text Semibold',30),860,10,quits)
     bouton_quitter.draw_bouton()
 
@@ -387,22 +524,30 @@ def bandeau(window,fenetre):
     if fenetre=="fenetre_page_regle":
         menu_btn=Bouton(NavBar,150,40,6,1,"#a09d8a",'black','#252527','Menu',"white",('artel 18 bold',24),50,150,retour)
         menu_btn.draw_bouton()
-        """
-        compte_btn=Bouton(NavBar,150,40,6,1,"#a09d8a",'black','#252527','Compte',"white",('artel 18 bold',24),50,200,compte_pg)
-        compte_btn.draw_bouton()"""
+        if username!=None:
+            succee_btn=Bouton(NavBar,150,40,6,1,"#a09d8a",'black','#252527','Succées',"white",('artel 18 bold',24),50,200,succes_pg)
+            succee_btn.draw_bouton()
     
     elif fenetre=="fenetre_page_principal":
         regle_btn=Bouton(NavBar,150,40,6,1,"#a09d8a",'black','#252527','Regles',"white",('artel 18 bold',24),50,150,regle)
         regle_btn.draw_bouton()
-        """
-        compte_btn=Bouton(NavBar,150,40,6,1,"#a09d8a",'black','#252527','Compte',"white",('artel 18 bold',24),50,200,compte_pg)
-        compte_btn.draw_bouton()"""
+        if username!=None:
+            succee_btn=Bouton(NavBar,150,40,6,1,"#a09d8a",'black','#252527','Succées',"white",('artel 18 bold',24),50,200,succes_pg)
+            succee_btn.draw_bouton()
 
     elif fenetre=="fenetre_page_compte":
         menu_btn=Bouton(NavBar,150,40,6,1,"#a09d8a",'black','#252527','Menu',"white",('artel 18 bold',24),50,150,retour)
         menu_btn.draw_bouton()
         regle_btn=Bouton(NavBar,150,40,6,1,"#a09d8a",'black','#252527','Regles',"white",('artel 18 bold',24),50,200,regle)
         regle_btn.draw_bouton()
+        succee_btn=Bouton(NavBar,150,40,6,1,"#a09d8a",'black','#252527','Succées',"white",('artel 18 bold',24),50,250,succes_pg)
+        succee_btn.draw_bouton()
+    elif fenetre=="fenetre_page_succee":
+        menu_btn=Bouton(NavBar,150,40,6,1,"#a09d8a",'black','#252527','Menu',"white",('artel 18 bold',24),50,150,retour)
+        menu_btn.draw_bouton()
+        regle_btn=Bouton(NavBar,150,40,6,1,"#a09d8a",'black','#252527','Regles',"white",('artel 18 bold',24),50,200,regle)
+        regle_btn.draw_bouton()
+
     deconnection_btn=Bouton(NavBar,40,40,6,1,"#a09d8a",'black','#252527','Se Deconnecter',"white",('artel 18 bold',24),35,600,deconnection)
     deconnection_btn.draw_bouton()
 
@@ -412,7 +557,7 @@ def bandeau(window,fenetre):
     close_btn = Button(NavBar, image=close_icon, bg='black', bd=0, command=switch)
     close_btn.place(x=200, y=5)
 
-bandeau(fenetre_page_principal.fenetre,"fenetre_page_principal")
+bandeau(fenetre_active,fenetre_active_text)
 
 
 
